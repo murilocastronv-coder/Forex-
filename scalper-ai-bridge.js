@@ -83,14 +83,15 @@ const server = http.createServer((req, res) => {
           model: MODEL,
           instructions,
           input: JSON.stringify(context),
-          text: { format: { type: "json_object" } },
-          max_output_tokens: 120
+          text: { format: { type: "json_schema", name: "scalper_signal", strict: true, schema: { type: "object", properties: { decision: { type: "string", enum: ["BUY", "SELL", "WAIT"] }, confidence: { type: "integer", minimum: 0, maximum: 100 }, reason: { type: "string" } }, required: ["decision", "confidence", "reason"], additionalProperties: false } } },
+          max_output_tokens: 250
         }),
         signal: AbortSignal.timeout(4500)
       });
       const body = await apiResponse.json().catch(() => ({}));
       if (!apiResponse.ok) {
-        console.error("OpenAI API request failed with status", apiResponse.status);
+        const apiError = body && body.error ? body.error : {};
+        console.error("OpenAI API request failed:", JSON.stringify({ status: apiResponse.status, code: apiError.code || null, type: apiError.type || null, message: apiError.message || "No error message returned" }));
         return send(res, 502, { error: "AI provider request failed" });
       }
       let parsed;
