@@ -32,7 +32,8 @@ function authorized(req) {
   return auth === `Bearer ${BRIDGE_TOKEN}`;
 }
 const server = http.createServer((req, res) => {
-  const pathname = new URL(req.url || "/", "http://localhost").pathname.replace(/\\/+$/, "") || "/";
+  let pathname = new URL(req.url || "/", "http://localhost").pathname;
+  while (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
   if (req.method === "GET" && (pathname === "/" || pathname === "/health"))
     return send(res, 200, { ok: true, service: "forex-scalper-ai", configured: Boolean(API_KEY && BRIDGE_TOKEN), endpoint: "/analyze" });
 
