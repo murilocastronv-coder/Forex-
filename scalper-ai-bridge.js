@@ -32,10 +32,11 @@ function authorized(req) {
   return auth === `Bearer ${BRIDGE_TOKEN}`;
 }
 const server = http.createServer((req, res) => {
-  if (req.method === "GET" && req.url === "/health")
-    return send(res, 200, { ok: true, configured: Boolean(API_KEY && BRIDGE_TOKEN) });
+  const pathname = new URL(req.url || "/", "http://localhost").pathname.replace(/\\/+$/, "") || "/";
+  if (req.method === "GET" && (pathname === "/" || pathname === "/health"))
+    return send(res, 200, { ok: true, service: "forex-scalper-ai", configured: Boolean(API_KEY && BRIDGE_TOKEN), endpoint: "/analyze" });
 
-  if (req.method !== "POST" || req.url !== "/analyze")
+  if (req.method !== "POST" || pathname !== "/analyze")
     return send(res, 404, { error: "Not found" });
   if (!authorized(req)) return send(res, 401, { error: "Unauthorized" });
   if (!API_KEY) return send(res, 503, { error: "AI provider is not configured" });
