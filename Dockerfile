@@ -7,7 +7,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     WINEDLLOVERRIDES="mscoree,mshtml="
 
-# Use current WineHQ stable instead of Ubuntu 22.04's older Wine 6 package.
 RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget cabextract gnupg2 xvfb xauth x11-utils fonts-liberation \
     python3 python3-pip && \
@@ -17,20 +16,22 @@ RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-in
     apt-get update && apt-get install -y --install-recommends winehq-stable && \
     rm -rf /var/lib/apt/lists/*
 
-# Keep one virtual X server alive for the complete Wine prefix initialization and installers.
-RUN mkdir -p /opt/installers && \
-    wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe -O /opt/installers/python.exe && \
+RUN set -eux; \
+    mkdir -p /opt/installers; \
+    wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe -O /opt/installers/python.exe; \
     Xvfb :99 -screen 0 1280x800x24 -ac +extension GLX +render -noreset >/tmp/xvfb.log 2>&1 & \
-    sleep 2 && \
-    wineboot --init && \
-    sleep 20 && \
-    wine cmd /c ver && \
-    wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1 && \
-    wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5 && \
-    rm -f /opt/installers/python.exe && \
-    wget -q https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe -O /opt/installers/mt5setup.exe && \
-    wine /opt/installers/mt5setup.exe /auto && \
-    rm -f /opt/installers/mt5setup.exe && \
+    XVFB_PID=$!; \
+    trap 'kill "$XVFB_PID" 2>/dev/null || true' EXIT; \
+    sleep 2; \
+    wineboot --init; \
+    sleep 20; \
+    wine cmd /c ver; \
+    wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1; \
+    wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5; \
+    rm -f /opt/installers/python.exe; \
+    wget -q https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe -O /opt/installers/mt5setup.exe; \
+    wine /opt/installers/mt5setup.exe /auto; \
+    rm -f /opt/installers/mt5setup.exe; \
     wineboot --shutdown
 
 WORKDIR /app
