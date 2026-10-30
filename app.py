@@ -58,11 +58,25 @@ def get_account_id():
     # First try to find an already-connected account in this FXAPIS workspace.
     try:
         accounts = fx_request("GET", "/v1/accounts")
-        rows = accounts if isinstance(accounts, list) else accounts.get("accounts", [])
+        # Current FXAPIS list responses use {items, next_cursor, total};
+        # older responses may use {accounts: [...]} or a bare list.
+        if isinstance(accounts, list):
+            rows = accounts
+        elif isinstance(accounts, dict):
+            rows = accounts.get("items") or accounts.get("accounts") or []
+        else:
+            rows = []
         for a in rows:
-            if str(a.get("login", "")) == env("XM_LOGIN") and a.get("server") == env("XM_SERVER"):
-                runtime["account_id"] = a.get("id")
-                return runtime["account_id"]
+            if not isinstance(a, dict):
+                continue
+            login = a.get("login") or a.get("accountLogin")
+            server = a.get("server") or a.get("serverName")
+            account_id = a.get("id") or a.get("accountId")
+            if str(login or "") == env("XM_LOGIN") and str(server or "").strip() == env("XM_SERVER"):
+                if account_id:
+                    runtime["account_id"] = account_id
+                    log.info("Found existing FXAPIS account; reusing it.")
+                    return runtime["account_id"]
     except Exception as e:
         log.warning("Account lookup: %s", e)
     payload = {"login": env("XM_LOGIN"), "server": env("XM_SERVER"),
