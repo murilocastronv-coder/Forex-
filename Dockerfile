@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1
 
 RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget cabextract xvfb xauth x11-utils wine64 wine32 fonts-liberation \
+    ca-certificates curl wget cabextract xvfb xauth x11-utils wine wine64 wine32 fonts-liberation \
     python3 python3-pip && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/installers && \
