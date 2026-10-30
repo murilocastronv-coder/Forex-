@@ -1,7 +1,8 @@
 import json, os, subprocess
 from flask import Flask, jsonify
 app = Flask(__name__)
-WIN_PYTHON = r'C:\\Python311\\python.exe'
+WIN_PYTHON = r'C:\Python311\python.exe'
+PROBE = r'Z:\app\mt5_probe.py'
 @app.get('/')
 def home():
     return jsonify({'service': 'MT5 Wine proof of concept', 'mode': 'connection-check-only', 'orders_enabled': False, 'status_endpoint': '/mt5-check'})
@@ -11,7 +12,7 @@ def health():
 @app.get('/mt5-check')
 def mt5_check():
     try:
-        p = subprocess.run(['wine', WIN_PYTHON, '/app/mt5_probe.py'], capture_output=True, text=True, timeout=90, env=os.environ.copy())
+        p = subprocess.run(['wine', WIN_PYTHON, PROBE], capture_output=True, text=True, timeout=90, env=os.environ.copy())
         lines = [x for x in p.stdout.splitlines() if x.strip()]
         data = json.loads(lines[-1]) if lines else {'ok': False, 'stage': 'process', 'error': p.stderr[-1500:] or 'No probe output'}
         if p.stderr: data['diagnostic'] = p.stderr[-1000:]
