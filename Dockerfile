@@ -3,20 +3,35 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     WINEPREFIX=/opt/wineprefix \
     WINEARCH=win64 \
-    PYTHONUNBUFFERED=1
+    DISPLAY=:99 \
+    PYTHONUNBUFFERED=1 \
+    WINEDLLOVERRIDES="mscoree,mshtml="
 
+# Use current WineHQ stable instead of Ubuntu 22.04's older Wine 6 package.
 RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget cabextract xvfb xauth x11-utils wine wine64 wine32 fonts-liberation \
-    python3 python3-pip && rm -rf /var/lib/apt/lists/*
+    ca-certificates curl wget cabextract gnupg2 xvfb xauth x11-utils fonts-liberation \
+    python3 python3-pip && \
+    mkdir -p /etc/apt/keyrings && \
+    wget -qO- https://dl.winehq.org/wine-builds/winehq.key | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key && \
+    wget -qO /etc/apt/sources.list.d/winehq-jammy.sources https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources && \
+    apt-get update && apt-get install -y --install-recommends winehq-stable && \
+    rm -rf /var/lib/apt/lists/*
 
+# Keep one virtual X server alive for the complete Wine prefix initialization and installers.
 RUN mkdir -p /opt/installers && \
     wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe -O /opt/installers/python.exe && \
-    xvfb-run -a sh -c 'wineboot --init; sleep 8; wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1 && wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5' && \
-    rm -f /opt/installers/python.exe
-
-RUN wget -q https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe -O /opt/installers/mt5setup.exe && \
-    xvfb-run -a sh -c 'wine /opt/installers/mt5setup.exe /auto; wineboot --shutdown' && \
-    rm -f /opt/installers/mt5setup.exe
+    Xvfb :99 -screen 0 1280x800x24 -ac +extension GLX +render -noreset >/tmp/xvfb.log 2>&1 & \
+    sleep 2 && \
+    wineboot --init && \
+    sleep 20 && \
+    wine cmd /c ver && \
+    wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1 && \
+    wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5 && \
+    rm -f /opt/installers/python.exe && \
+    wget -q https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe -O /opt/installers/mt5setup.exe && \
+    wine /opt/installers/mt5setup.exe /auto && \
+    rm -f /opt/installers/mt5setup.exe && \
+    wineboot --shutdown
 
 WORKDIR /app
 COPY requirements-docker.txt ./requirements-docker.txt
