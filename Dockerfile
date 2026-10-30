@@ -3,7 +3,6 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     WINEPREFIX=/opt/wineprefix \
     WINEARCH=win64 \
-    DISPLAY=:99 \
     PYTHONUNBUFFERED=1
 
 RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
@@ -12,14 +11,12 @@ RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-in
 
 RUN mkdir -p /opt/installers && \
     wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe -O /opt/installers/python.exe && \
-    xvfb-run -a wineboot --init && \
-    xvfb-run -a wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1 && \
-    rm -f /opt/installers/python.exe && \
-    xvfb-run -a wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5
+    xvfb-run -a sh -c 'wineboot --init; sleep 8; wine /opt/installers/python.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311 Include_test=0 PrependPath=1 && wine C:\\Python311\\python.exe -m pip install --upgrade pip MetaTrader5' && \
+    rm -f /opt/installers/python.exe
 
 RUN wget -q https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe -O /opt/installers/mt5setup.exe && \
-    xvfb-run -a wine /opt/installers/mt5setup.exe /auto && \
-    rm -f /opt/installers/mt5setup.exe && xvfb-run -a wineboot --shutdown
+    xvfb-run -a sh -c 'wine /opt/installers/mt5setup.exe /auto; wineboot --shutdown' && \
+    rm -f /opt/installers/mt5setup.exe
 
 WORKDIR /app
 COPY requirements-docker.txt ./requirements-docker.txt
